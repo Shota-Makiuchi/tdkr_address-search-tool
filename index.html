@@ -54,9 +54,18 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <div class="card bg-white rounded-2xl p-6 md:p-8 w-full max-w-2xl mx-auto relative">
-        <button id="master-edit-open-button" class="absolute top-4 right-4 text-gray-500 hover:text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-        </button>
+        <div class="absolute top-4 right-4 flex gap-x-2">
+            <!-- ログシートを開くボタン -->
+            <a id="log-sheet-link" href="#" target="_blank" class="text-gray-500 hover:text-blue-600" title="作業ログシートを開く">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </a>
+            <!-- マスター編集ボタン -->
+            <button id="master-edit-open-button" class="text-gray-500 hover:text-blue-600" title="マスターデータ編集">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </button>
+        </div>
         <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">宛名登録先 判断ツール</h1>
 
         <!-- Loading Screen -->
@@ -134,7 +143,7 @@
 
     <script>
         // --- 設定項目 ---
-        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw6rPyDCPLYwDCyB6dVmSdy9TjSuSrNZuace69LbYVchCZIIsVoEftvlDfpEd374P88VQ/exec';
+        const GAS_WEB_APP_URL = 'ここにhttps://script.google.com/macros/s/AKfycbwNqwWDYzfZZubdrHOg3cBJzhYGaXOOzX4sLLBeiENVWvdc4ufv1BuNsxHtu2-HFfNX/exec';
 
         // --- フローチャートデータ ---
         const flowchartData = {
@@ -184,6 +193,7 @@
         const addUserButton = document.getElementById('add-user-button');
         const addTenantButton = document.getElementById('add-tenant-button');
         const toast = document.getElementById('toast');
+        const logSheetLink = document.getElementById('log-sheet-link');
 
         // --- アプリの状態管理 ---
         let masterData = { users: [], tenants: [] };
@@ -202,21 +212,35 @@
             }, 3000);
         }
 
-        // [修正] 画面切り替えのための新しい関数
         function showScreen(screenName) {
             screens.forEach(s => s.classList.remove('active'));
             document.getElementById(`${screenName}-screen`).classList.add('active');
         }
 
         async function fetchMasterData() {
+            // [修正] プレビュー用のデモモードを追加
             if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
-                showToast('GASのURLが未設定です', 'error');
-                showScreen('setup'); // ローディングを終了
+                showToast('デモモードで実行中です', 'success');
+                // サンプルのマスターデータを設定
+                const demoData = {
+                    users: ["鈴木 太郎 (デモ)", "佐藤 花子 (デモ)"],
+                    tenants: ["株式会社A (デモ)", "株式会社B (デモ)"],
+                    spreadsheetUrl: "#"
+                };
+                masterData = demoData;
+                logSheetLink.href = masterData.spreadsheetUrl;
+                populateSelect(userSelect, masterData.users, "選択してください");
+                populateSelect(tenantSelect, masterData.tenants, "選択してください");
+                showScreen('setup');
                 return;
             }
+            
+            // 本番環境のロジック
             try {
                 const response = await fetch(GAS_WEB_APP_URL);
-                masterData = await response.json();
+                const data = await response.json();
+                masterData = data;
+                logSheetLink.href = data.spreadsheetUrl || '#';
                 populateSelect(userSelect, masterData.users, "選択してください");
                 populateSelect(tenantSelect, masterData.tenants, "選択してください");
                 const lastUser = localStorage.getItem('lastUser');
@@ -227,7 +251,7 @@
             } catch (error) {
                 console.error('マスターデータの読み込みに失敗:', error);
                 showToast('マスターデータの読み込みに失敗しました', 'error');
-                showScreen('setup'); // ローディングを終了
+                showScreen('setup');
             }
         }
 
@@ -266,8 +290,8 @@
 
         async function postToGAS(payload) {
              if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
-                showToast('GASのURLが未設定です', 'error');
-                return { status: 'error', message: 'GAS URL not set' };
+                showToast('デモモードのため、データは保存されません', 'success');
+                return { status: 'success' }; // デモモードでは成功を返す
             }
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
@@ -320,8 +344,8 @@
                         const result = await postToGAS({ action: 'delete', type, value });
                         if (result.status === 'success') {
                             showToast('削除しました');
-                            fetchMasterData(); // リストを再読み込み
-                            renderMasterLists(); // 編集画面も更新
+                            fetchMasterData();
+                            renderMasterLists();
                         } else {
                             showToast('削除に失敗しました', 'error');
                         }
@@ -345,8 +369,8 @@
             if (result.status === 'success') {
                 showToast('追加しました');
                 inputElement.value = '';
-                await fetchMasterData(); // リストを再読み込み
-                renderMasterLists(); // 編集画面も更新
+                await fetchMasterData();
+                renderMasterLists();
             } else {
                 showToast(result.message || '追加に失敗しました', 'error');
             }
@@ -381,14 +405,12 @@
             showScreen('setup');
         });
 
-        // [修正] マスター編集画面を開くときのロジック
         masterEditOpenButton.addEventListener('click', () => {
             lastScreen = document.querySelector('.screen.active').id.replace('-screen', '');
             renderMasterLists();
             showScreen('master-edit');
         });
 
-        // [修正] マスター編集画面を閉じるときのロジック
         masterEditCloseButton.addEventListener('click', () => {
             showScreen(lastScreen);
         });
