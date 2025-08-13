@@ -7,36 +7,81 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Noto Sans JP', 'Inter', sans-serif;
-        }
-        .card {
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            transition: all 0.3s ease-in-out;
-        }
-        .btn {
-            transition: all 0.2s ease-in-out;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgb(0 0 0 / 0.2);
-        }
-        .result-card {
-             animation: fadeIn 0.5s ease-in-out;
-        }
+        body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+        .card { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .btn { transition: all 0.2s ease-in-out; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 8px rgb(0 0 0 / 0.2); }
+        .btn:disabled { background-color: #d1d5db; cursor: not-allowed; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .result-card, .master-card { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(-20px);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success { background-color: #28a745; }
+        .toast.error { background-color: #dc3545; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="card bg-white rounded-2xl p-6 md:p-8 w-full max-w-2xl mx-auto">
+    <div class="card bg-white rounded-2xl p-6 md:p-8 w-full max-w-2xl mx-auto relative">
+        <button id="master-edit-open-button" class="absolute top-4 right-4 text-gray-500 hover:text-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
         <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">宛名登録先 判断ツール</h1>
 
-        <!-- Question Area -->
-        <div id="question-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="screen active text-center py-10">
+            <div class="loader-container mb-4 justify-center flex"><div class="loader"></div></div>
+            <p>マスターデータを読み込んでいます...</p>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="screen">
+            <div class="space-y-6">
+                <div>
+                    <label for="user-select" class="block text-lg font-medium text-gray-700 mb-2">作業者名</label>
+                    <select id="user-select" class="w-full p-3 border border-gray-300 rounded-lg text-lg"></select>
+                </div>
+                <div>
+                    <label for="tenant-select" class="block text-lg font-medium text-gray-700 mb-2">テナント名</label>
+                    <select id="tenant-select" class="w-full p-3 border border-gray-300 rounded-lg text-lg"></select>
+                </div>
+                <button id="start-button" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg w-full">作業を開始する</button>
+            </div>
+        </div>
+
+        <!-- Question Screen -->
+        <div id="question-screen" class="screen">
             <div id="question-card" class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-6">
                 <h2 id="question-title" class="text-xl md:text-2xl font-bold text-gray-900 mb-3"></h2>
                 <p id="question-description" class="text-gray-700 text-base"></p>
@@ -47,128 +92,163 @@
             </div>
         </div>
 
-        <!-- Result Area -->
-        <div id="result-container" class="hidden text-center">
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen text-center">
+             <div class="loader-container mb-4 justify-center flex hidden"><div class="loader"></div><p class="ml-4 self-center">ログを記録中...</p></div>
             <div id="result-card" class="result-card bg-indigo-600 text-white p-8 rounded-xl mb-6">
                 <h2 class="text-lg font-medium mb-2">【結論】</h2>
                 <p id="result-text" class="text-3xl font-bold"></p>
             </div>
-            <button id="restart-button" class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg">最初からやり直す</button>
+            <div id="next-action-buttons" class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button id="next-task-button" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg w-full">次の作業へ</button>
+                <button id="change-tenant-button" class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg w-full">テナントを変更</button>
+            </div>
         </div>
+
+        <!-- Master Edit Screen -->
+        <div id="master-edit-screen" class="screen">
+            <h2 class="text-xl font-bold text-center text-gray-800 mb-4">マスターデータ編集</h2>
+            <!-- Users -->
+            <div class="master-card border p-4 rounded-lg mb-4">
+                <h3 class="font-bold mb-2">作業者名リスト</h3>
+                <div id="user-list" class="space-y-2 mb-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="new-user-input" placeholder="新しい作業者名" class="flex-grow p-2 border rounded-lg">
+                    <button id="add-user-button" class="btn bg-green-500 text-white px-4 py-2 rounded-lg">追加</button>
+                </div>
+            </div>
+            <!-- Tenants -->
+            <div class="master-card border p-4 rounded-lg mb-4">
+                <h3 class="font-bold mb-2">テナント名リスト</h3>
+                <div id="tenant-list" class="space-y-2 mb-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="new-tenant-input" placeholder="新しいテナント名" class="flex-grow p-2 border rounded-lg">
+                    <button id="add-tenant-button" class="btn bg-green-500 text-white px-4 py-2 rounded-lg">追加</button>
+                </div>
+            </div>
+            <button id="master-edit-close-button" class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg w-full">ツールに戻る</button>
+        </div>
+
     </div>
+    <div id="toast" class="toast"></div>
 
     <script>
+        // --- 設定項目 ---
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw6rPyDCPLYwDCyB6dVmSdy9TjSuSrNZuace69LbYVchCZIIsVoEftvlDfpEd374P88VQ/exec';
+
+        // --- フローチャートデータ ---
         const flowchartData = {
-            // 個人アカウントの特定フロー
-            'B': {
-                title: "郵便物に名前あり？",
-                description: "宛名に個人名（フルネームまたは苗字）が含まれているかを確認してください。",
-                yes: 'C',
-                no: 'E'
-            },
-            'C': {
-                title: "フルネーム記載あり？",
-                description: "「山田 太郎」のように、姓名の両方が記載されている場合が対象です。苗字のみの場合は「いいえ」を選択してください。",
-                yes: 'D',
-                no: 'E'
-            },
-            'D': {
-                title: "姓名が完全一致？",
-                description: "システムの登録情報と、郵便物の姓名が完全に一致するものを探してください。",
-                yes: 'F',
-                no: 'G'
-            },
-            'E': {
-                title: "アドレス帳に姓が一致？",
-                description: "郵便物の苗字と、システムに登録されている苗字が一致するアカウントを探してください。",
-                yes: 'G',
-                no: 'I'
-            },
-            'F': {
-                title: "同姓同名なし？",
-                description: "完全に一致したアカウントが、システム内に複数存在しないか確認してください。1件のみの場合は「はい」を選択してください。",
-                yes: 'Z1',
-                no: 'G'
-            },
-            'G': {
-                title: "同姓なし？",
-                description: "一致したアカウントが、システム内に複数存在しないか確認してください。1件のみの場合は「はい」を選択してください。",
-                yes: 'Z1',
-                no: 'H'
-            },
-            'H': {
-                title: "部署一致が1件のみ？",
-                description: "郵便物に部署名が記載されている場合、その部署と一致するアカウントが1件だけか確認してください。",
-                yes: 'Z1',
-                no: 'I'
-            },
-            // グループアカウントの特定フロー
-            'I': {
-                title: "部署名グループを検索",
-                description: "ここからは、部署名での検索に移行します。下の「はい」ボタンを押して次に進んでください。（この質問は分岐しません）",
-                yes: 'J',
-                no: 'J' // NOボタンを押しても次に進む
-            },
-            'J': {
-                title: "部署名グループあり？",
-                description: "郵便物に記載されている部署名が、システムにグループとして登録されているか確認してください。",
-                yes: 'K',
-                no: 'M'
-            },
-            'K': {
-                title: "部署名が完全一致？",
-                description: "「営業部」と「営業第一部」は不一致です。完全に同じ名称のグループがあるか確認してください。",
-                yes: 'Z2',
-                no: 'L'
-            },
-            'L': {
-                title: "部署名が部分一致？",
-                description: "例えば宛名が「営業部」の時、「営業第一部」や「営業企画部」などが候補になります。候補が1つだけか確認してください。",
-                yes: 'Z2',
-                no: 'M'
-            },
-            'M': {
-                title: "会社名グループあり？",
-                description: "郵便物に記載されている会社名が、システムにグループとして登録されているか確認してください。",
-                yes: 'N',
-                no: 'Z4'
-            },
-            'N': {
-                title: "会社名が完全一致？",
-                description: "会社名が完全に一致するグループがあるか確認してください。",
-                yes: 'Z3',
-                no: 'Z4'
-            },
-            // 結論
+            'B': { title: "郵便物に名前あり？", description: "宛名に個人名（フルネームまたは苗字）が含まれているかを確認してください。", yes: 'C', no: 'E' },
+            'C': { title: "フルネーム記載あり？", description: "「山田 太郎」のように、姓名の両方が記載されている場合が対象です。苗字のみの場合は「いいえ」を選択してください。", yes: 'D', no: 'E' },
+            'D': { title: "姓名が完全一致？", description: "システムの登録情報と、郵便物の姓名が完全に一致するものを探してください。", yes: 'F', no: 'G' },
+            'E': { title: "アドレス帳に姓が一致？", description: "郵便物の苗字と、システムに登録されている苗字が一致するアカウントを探してください。", yes: 'G', no: 'I' },
+            'F': { title: "同姓同名なし？", description: "完全に一致したアカウントが、システム内に複数存在しないか確認してください。1件のみの場合は「はい」を選択してください。", yes: 'Z1', no: 'G' },
+            'G': { title: "同姓なし？", description: "一致したアカウントが、システム内に複数存在しないか確認してください。1件のみの場合は「はい」を選択してください。", yes: 'Z1', no: 'H' },
+            'H': { title: "部署一致が1件のみ？", description: "郵便物に部署名が記載されている場合、その部署と一致するアカウントが1件だけか確認してください。", yes: 'Z1', no: 'I' },
+            'I': { title: "部署名グループを検索", description: "ここからは、部署名での検索に移行します。下の「はい」ボタンを押して次に進んでください。（この質問は分岐しません）", yes: 'J', no: 'J' },
+            'J': { title: "部署名グループあり？", description: "郵便物に記載されている部署名が、システムにグループとして登録されているか確認してください。", yes: 'K', no: 'M' },
+            'K': { title: "部署名が完全一致？", description: "「営業部」と「営業第一部」は不一致です。完全に同じ名称のグループがあるか確認してください。", yes: 'Z2', no: 'L' },
+            'L': { title: "部署名が部分一致？", description: "例えば宛名が「営業部」の時、「営業第一部」や「営業企画部」などが候補になります。候補が1つだけか確認してください。", yes: 'Z2', no: 'M' },
+            'M': { title: "会社名グループあり？", description: "郵便物に記載されている会社名が、システムにグループとして登録されているか確認してください。", yes: 'N', no: 'Z4' },
+            'N': { title: "会社名が完全一致？", description: "会社名が完全に一致するグループがあるか確認してください。", yes: 'Z3', no: 'Z4' },
             'Z1': { type: 'result', text: '個人アカウントに登録' },
             'Z2': { type: 'result', text: '部署名グループに登録' },
             'Z3': { type: 'result', text: '会社名グループに登録' },
             'Z4': { type: 'result', text: '宛名不明グループに登録' }
         };
 
-        const questionContainer = document.getElementById('question-container');
-        const resultContainer = document.getElementById('result-container');
+        // --- DOM要素 ---
+        const screens = document.querySelectorAll('.screen');
+        const setupScreen = document.getElementById('setup-screen');
+        const questionScreen = document.getElementById('question-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const masterEditScreen = document.getElementById('master-edit-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const userSelect = document.getElementById('user-select');
+        const tenantSelect = document.getElementById('tenant-select');
+        const startButton = document.getElementById('start-button');
         const questionTitle = document.getElementById('question-title');
         const questionDescription = document.getElementById('question-description');
-        const resultText = document.getElementById('result-text');
         const yesButton = document.getElementById('yes-button');
         const noButton = document.getElementById('no-button');
-        const restartButton = document.getElementById('restart-button');
+        const resultText = document.getElementById('result-text');
+        const nextTaskButton = document.getElementById('next-task-button');
+        const changeTenantButton = document.getElementById('change-tenant-button');
+        const loaderContainer = document.querySelector('.loader-container');
+        const masterEditOpenButton = document.getElementById('master-edit-open-button');
+        const masterEditCloseButton = document.getElementById('master-edit-close-button');
+        const userListDiv = document.getElementById('user-list');
+        const tenantListDiv = document.getElementById('tenant-list');
+        const newUserInput = document.getElementById('new-user-input');
+        const newTenantInput = document.getElementById('new-tenant-input');
+        const addUserButton = document.getElementById('add-user-button');
+        const addTenantButton = document.getElementById('add-tenant-button');
+        const toast = document.getElementById('toast');
 
-        let currentNodeId = 'B'; // 開始ノードを'B'に直接設定
+        // --- アプリの状態管理 ---
+        let masterData = { users: [], tenants: [] };
+        let currentUser = '';
+        let currentTenant = '';
+        let currentNodeId = 'B';
+        let history = [];
+        let lastScreen = 'setup';
 
+        // --- 関数 ---
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // [修正] 画面切り替えのための新しい関数
+        function showScreen(screenName) {
+            screens.forEach(s => s.classList.remove('active'));
+            document.getElementById(`${screenName}-screen`).classList.add('active');
+        }
+
+        async function fetchMasterData() {
+            if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
+                showToast('GASのURLが未設定です', 'error');
+                showScreen('setup'); // ローディングを終了
+                return;
+            }
+            try {
+                const response = await fetch(GAS_WEB_APP_URL);
+                masterData = await response.json();
+                populateSelect(userSelect, masterData.users, "選択してください");
+                populateSelect(tenantSelect, masterData.tenants, "選択してください");
+                const lastUser = localStorage.getItem('lastUser');
+                if (lastUser && masterData.users.includes(lastUser)) {
+                    userSelect.value = lastUser;
+                }
+                showScreen('setup');
+            } catch (error) {
+                console.error('マスターデータの読み込みに失敗:', error);
+                showToast('マスターデータの読み込みに失敗しました', 'error');
+                showScreen('setup'); // ローディングを終了
+            }
+        }
+
+        function populateSelect(selectElement, options, placeholder) {
+            selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                selectElement.appendChild(opt);
+            });
+        }
+        
         function renderNode(nodeId) {
             const node = flowchartData[nodeId];
-
             if (node.type === 'result') {
-                // 結果表示
-                questionContainer.classList.add('hidden');
-                resultContainer.classList.remove('hidden');
+                showScreen('result');
                 resultText.textContent = node.text;
+                logData(node.text);
             } else {
-                // 質問表示
-                questionContainer.classList.remove('hidden');
-                resultContainer.classList.add('hidden');
+                showScreen('question');
                 questionTitle.textContent = node.title;
                 questionDescription.textContent = node.description;
             }
@@ -176,23 +256,150 @@
 
         function handleAnswer(answer) {
             const currentNode = flowchartData[currentNodeId];
+            history.push({ question: currentNode.title, answer: answer.toUpperCase() });
             const nextNodeId = answer === 'yes' ? currentNode.yes : currentNode.no;
-            
             if (nextNodeId) {
                 currentNodeId = nextNodeId;
                 renderNode(currentNodeId);
             }
         }
-        
+
+        async function postToGAS(payload) {
+             if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
+                showToast('GASのURLが未設定です', 'error');
+                return { status: 'error', message: 'GAS URL not set' };
+            }
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: new URLSearchParams(payload),
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('GASへの送信に失敗:', error);
+                showToast('サーバーとの通信に失敗しました', 'error');
+                return { status: 'error', message: error.toString() };
+            }
+        }
+
+        async function logData(result) {
+            loaderContainer.classList.remove('hidden');
+            document.getElementById('next-action-buttons').classList.add('hidden');
+            
+            const logPayload = {
+                action: 'log',
+                timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
+                user: currentUser,
+                tenant: currentTenant,
+                result: result,
+            };
+            
+            Object.values(flowchartData).filter(v => v.type !== 'result').forEach(q => {
+                const answered = history.find(h => h.question === q.title);
+                logPayload[q.title] = answered ? answered.answer : '';
+            });
+
+            await postToGAS(logPayload);
+            
+            loaderContainer.classList.add('hidden');
+            document.getElementById('next-action-buttons').classList.remove('hidden');
+        }
+
+        function renderMasterList(type, list, container) {
+            container.innerHTML = '';
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
+                div.innerHTML = `<span>${item}</span><button data-type="${type}" data-value="${item}" class="delete-item-btn text-red-500 hover:text-red-700">削除</button>`;
+                container.appendChild(div);
+            });
+            document.querySelectorAll('.delete-item-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    const { type, value } = e.target.dataset;
+                    if (confirm(`「${value}」を削除しますか？`)) {
+                        const result = await postToGAS({ action: 'delete', type, value });
+                        if (result.status === 'success') {
+                            showToast('削除しました');
+                            fetchMasterData(); // リストを再読み込み
+                            renderMasterLists(); // 編集画面も更新
+                        } else {
+                            showToast('削除に失敗しました', 'error');
+                        }
+                    }
+                };
+            });
+        }
+
+        function renderMasterLists() {
+            renderMasterList('user', masterData.users, userListDiv);
+            renderMasterList('tenant', masterData.tenants, tenantListDiv);
+        }
+
+        async function addMasterItem(type, inputElement) {
+            const value = inputElement.value.trim();
+            if (!value) {
+                showToast('値を入力してください', 'error');
+                return;
+            }
+            const result = await postToGAS({ action: 'add', type, value });
+            if (result.status === 'success') {
+                showToast('追加しました');
+                inputElement.value = '';
+                await fetchMasterData(); // リストを再読み込み
+                renderMasterLists(); // 編集画面も更新
+            } else {
+                showToast(result.message || '追加に失敗しました', 'error');
+            }
+        }
+
+        // --- イベントリスナー ---
+        startButton.addEventListener('click', () => {
+            if (userSelect.value && tenantSelect.value) {
+                currentUser = userSelect.value;
+                currentTenant = tenantSelect.value;
+                localStorage.setItem('lastUser', currentUser);
+                history = [];
+                currentNodeId = 'B';
+                renderNode(currentNodeId);
+            } else {
+                alert('作業者名とテナント名を選択してください。');
+            }
+        });
+
         yesButton.addEventListener('click', () => handleAnswer('yes'));
         noButton.addEventListener('click', () => handleAnswer('no'));
-        restartButton.addEventListener('click', () => {
-            currentNodeId = 'B'; // リスタートも'B'から
+
+        nextTaskButton.addEventListener('click', () => {
+            history = [];
+            currentNodeId = 'B';
             renderNode(currentNodeId);
         });
 
-        // 初期表示
-        renderNode(currentNodeId);
+        changeTenantButton.addEventListener('click', () => {
+            history = [];
+            tenantSelect.value = '';
+            showScreen('setup');
+        });
+
+        // [修正] マスター編集画面を開くときのロジック
+        masterEditOpenButton.addEventListener('click', () => {
+            lastScreen = document.querySelector('.screen.active').id.replace('-screen', '');
+            renderMasterLists();
+            showScreen('master-edit');
+        });
+
+        // [修正] マスター編集画面を閉じるときのロジック
+        masterEditCloseButton.addEventListener('click', () => {
+            showScreen(lastScreen);
+        });
+
+        addUserButton.addEventListener('click', () => addMasterItem('user', newUserInput));
+        addTenantButton.addEventListener('click', () => addMasterItem('tenant', newTenantInput));
+
+        // --- 初期化処理 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMasterData();
+        });
     </script>
 </body>
 </html>
