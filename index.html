@@ -49,6 +49,7 @@
         }
         .toast.success { background-color: #28a745; }
         .toast.error { background-color: #dc3545; }
+        .progress-bar-inner { transition: width 0.4s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -96,6 +97,16 @@
         </div>
 
         <div id="question-screen" class="screen">
+            <!-- プログレスバー (新規追加) -->
+            <div id="progress-container" class="mb-6">
+                <div class="flex justify-between mb-1">
+                    <span id="progress-text" class="text-base font-medium text-blue-700">ステップ 1</span>
+                    <span id="progress-percent" class="text-sm font-medium text-blue-700">10%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full progress-bar-inner" style="width: 10%"></div>
+                </div>
+            </div>
             <div id="question-card" class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-6">
                 <h2 id="question-title" class="text-xl md:text-2xl font-bold text-gray-900 mb-3"></h2>
                 <p id="question-description" class="text-gray-700 text-base"></p>
@@ -143,6 +154,7 @@
 
     <script>
         const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw8z-Hkpjt-bWJp0DLeSAcwaC9nopzGkQF823DvzqoT4Mnu9-oWTcTjYJVoSQVSGb6MVw/exec';
+        const MAX_STEPS = 10; // フローの最大ステップ数を定義
 
         const flowchartData = {
             'B': { title: "郵便物に名前あり？", description: "宛名に個人名（フルネームまたは苗字）が含まれているかを確認してください。", yes: 'C', no: 'E' },
@@ -187,6 +199,9 @@
         const addTenantButton = document.getElementById('add-tenant-button');
         const toast = document.getElementById('toast');
         const logSheetLink = document.getElementById('log-sheet-link');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercent = document.getElementById('progress-percent');
 
         let masterData = { users: [], tenants: [] };
         let currentUser = '';
@@ -205,6 +220,15 @@
         function showScreen(screenName) {
             screens.forEach(s => s.classList.remove('active'));
             document.getElementById(`${screenName}-screen`).classList.add('active');
+        }
+
+        function updateProgressBar() {
+            const currentStep = history.length + 1;
+            const percentage = Math.min(100, (currentStep / MAX_STEPS) * 100);
+            
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `ステップ ${currentStep}`;
+            progressPercent.textContent = `${Math.round(percentage)}%`;
         }
 
         function populateSelects(data) {
@@ -254,6 +278,7 @@
                 logData(node.text); 
             } else {
                 showScreen('question');
+                updateProgressBar();
                 questionTitle.textContent = node.title;
                 questionDescription.textContent = node.description;
             }
@@ -326,7 +351,6 @@
                         const result = await postToGAS({ action: 'delete', type, value });
                         if (result.status === 'success') {
                             showToast('削除しました');
-                            // [修正] サーバーから再取得せず、ローカルのデータを更新
                             if (type === 'user') {
                                 masterData.users = masterData.users.filter(u => u !== value);
                             } else {
@@ -360,7 +384,6 @@
             if (result.status === 'success') {
                 showToast('追加しました');
                 inputElement.value = '';
-                // [修正] サーバーから再取得せず、ローカルのデータを更新
                 if (type === 'user') {
                     masterData.users.push(value);
                 } else {
