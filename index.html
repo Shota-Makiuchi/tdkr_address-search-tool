@@ -85,7 +85,6 @@
             </div>
         </div>
 
-        <!-- 荷物ID入力画面 (新規追加) -->
         <div id="package-id-screen" class="screen">
             <div class="space-y-6">
                 <div>
@@ -143,7 +142,7 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        const GAS_WEB_APP_URL = https://script.google.com/macros/s/AKfycbw8z-Hkpjt-bWJp0DLeSAcwaC9nopzGkQF823DvzqoT4Mnu9-oWTcTjYJVoSQVSGb6MVw/exec';
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw8z-Hkpjt-bWJp0DLeSAcwaC9nopzGkQF823DvzqoT4Mnu9-oWTcTjYJVoSQVSGb6MVw/exec';
 
         const flowchartData = {
             'B': { title: "郵便物に名前あり？", description: "宛名に個人名（フルネームまたは苗字）が含まれているかを確認してください。", yes: 'C', no: 'E' },
@@ -208,36 +207,23 @@
             document.getElementById(`${screenName}-screen`).classList.add('active');
         }
 
+        function populateSelects(data) {
+            const lastUser = userSelect.value || localStorage.getItem('lastUser');
+            populateSelect(userSelect, data.users, "選択してください");
+            populateSelect(tenantSelect, data.tenants, "選択してください");
+            if (lastUser && data.users.includes(lastUser)) {
+                userSelect.value = lastUser;
+            }
+        }
+        
         function populateSelect(selectElement, options, placeholder) {
             selectElement.innerHTML = `<option value="">${placeholder}</option>`;
-            options.forEach(option => {
+            (options || []).forEach(option => {
                 const opt = document.createElement('option');
                 opt.value = option;
                 opt.textContent = option;
                 selectElement.appendChild(opt);
             });
-        }
-
-        async function updateAndRepopulate() {
-            try {
-                const response = await fetch(GAS_WEB_APP_URL);
-                const data = await response.json();
-                masterData = data;
-                logSheetLink.href = data.spreadsheetUrl || '#';
-                
-                const lastUser = userSelect.value || localStorage.getItem('lastUser');
-                populateSelect(userSelect, masterData.users, "選択してください");
-                populateSelect(tenantSelect, masterData.tenants, "選択してください");
-                
-                if (lastUser && masterData.users.includes(lastUser)) {
-                    userSelect.value = lastUser;
-                }
-                return true;
-            } catch (error) {
-                console.error('マスターデータの更新に失敗:', error);
-                showToast('マスターデータの更新に失敗しました', 'error');
-                return false;
-            }
         }
 
         async function initialFetchMasterData() {
@@ -246,8 +232,16 @@
                 showScreen('setup');
                 return;
             }
-            const success = await updateAndRepopulate();
-            if (success) {
+            try {
+                const response = await fetch(GAS_WEB_APP_URL);
+                const data = await response.json();
+                masterData = data;
+                logSheetLink.href = data.spreadsheetUrl || '#';
+                populateSelects(masterData);
+                showScreen('setup');
+            } catch (error) {
+                console.error('マスターデータの読み込みに失敗:', error);
+                showToast('マスターデータの読み込みに失敗しました。GASのURLやデプロイ設定を確認してください。', 'error');
                 showScreen('setup');
             }
         }
@@ -299,7 +293,7 @@
                 timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
                 user: currentUser,
                 tenant: currentTenant,
-                packageId: currentPackageId, // 荷物IDを追加
+                packageId: currentPackageId,
                 result: result,
             };
             
@@ -317,7 +311,7 @@
 
         function renderMasterList(type, list, container) {
             container.innerHTML = '';
-            list.forEach(item => {
+            (list || []).forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
                 div.innerHTML = `<span>${item}</span><button data-type="${type}" data-value="${item}" class="delete-item-btn text-red-500 hover:text-red-700">削除</button>`;
@@ -332,10 +326,14 @@
                         const result = await postToGAS({ action: 'delete', type, value });
                         if (result.status === 'success') {
                             showToast('削除しました');
-                            const updateSuccess = await updateAndRepopulate();
-                            if (updateSuccess) {
-                                renderMasterLists();
+                            // [修正] サーバーから再取得せず、ローカルのデータを更新
+                            if (type === 'user') {
+                                masterData.users = masterData.users.filter(u => u !== value);
+                            } else {
+                                masterData.tenants = masterData.tenants.filter(t => t !== value);
                             }
+                            populateSelects(masterData);
+                            renderMasterLists();
                         } else {
                             showToast('削除に失敗しました', 'error');
                             button.disabled = false;
@@ -362,10 +360,14 @@
             if (result.status === 'success') {
                 showToast('追加しました');
                 inputElement.value = '';
-                const updateSuccess = await updateAndRepopulate();
-                if (updateSuccess) {
-                    renderMasterLists();
+                // [修正] サーバーから再取得せず、ローカルのデータを更新
+                if (type === 'user') {
+                    masterData.users.push(value);
+                } else {
+                    masterData.tenants.push(value);
                 }
+                populateSelects(masterData);
+                renderMasterLists();
             } else {
                 showToast(result.message || '追加に失敗しました', 'error');
             }
@@ -377,7 +379,7 @@
                 currentUser = userSelect.value;
                 currentTenant = tenantSelect.value;
                 localStorage.setItem('lastUser', currentUser);
-                showScreen('package-id'); // 荷物ID入力画面へ
+                showScreen('package-id');
             } else {
                 alert('作業者名とテナント名を選択してください。');
             }
@@ -400,8 +402,8 @@
 
         nextTaskButton.addEventListener('click', () => {
             history = [];
-            packageIdInput.value = ''; // 荷物ID入力をクリア
-            showScreen('package-id'); // 荷物ID入力画面へ戻る
+            packageIdInput.value = '';
+            showScreen('package-id');
         });
 
         changeTenantButton.addEventListener('click', () => {
