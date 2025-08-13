@@ -204,18 +204,9 @@
         }
 
         async function fetchMasterData() {
-            if (GAS_WEB_APP_URL === 'https://script.google.com/macros/s/AKfycbwZGuyDbwDD8imxm9tjt6vgaS0cGkkNuS7YJZrDLpUtNc78IpJ-6LDJUV-sBLdo_zkH2g/exec') {
-                showToast('デモモードで実行中です', 'success');
-                const demoData = {
-                    users: ["鈴木 太郎 (デモ)", "佐藤 花子 (デモ)"],
-                    tenants: ["株式会社A (デモ)", "株式会社B (デモ)"],
-                    spreadsheetUrl: "#"
-                };
-                masterData = demoData;
-                logSheetLink.href = masterData.spreadsheetUrl;
-                populateSelect(userSelect, masterData.users, "選択してください");
-                populateSelect(tenantSelect, masterData.tenants, "選択してください");
-                showScreen('setup');
+            if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
+                showToast('GAS URLが未設定です。デプロイ前にURLを設定してください。', 'error');
+                showScreen('setup'); // ローディングを終了させる
                 return;
             }
             try {
@@ -232,7 +223,7 @@
                 showScreen('setup');
             } catch (error) {
                 console.error('マスターデータの読み込みに失敗:', error);
-                showToast('マスターデータの読み込みに失敗しました', 'error');
+                showToast('マスターデータの読み込みに失敗しました。GASのURLやデプロイ設定を確認してください。', 'error');
                 showScreen('setup');
             }
         }
@@ -271,9 +262,9 @@
         }
 
         async function postToGAS(payload) {
-             if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
-                showToast('デモモードのため、データは保存されません', 'success');
-                return { status: 'success' };
+            if (GAS_WEB_APP_URL === 'ここにGoogle Apps ScriptのURLを貼り付け') {
+                showToast('GAS URLが未設定のため、データは保存されません。', 'error');
+                return { status: 'error', message: 'GAS URL not set' };
             }
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
@@ -403,4 +394,3 @@
     </script>
 </body>
 </html>
-
